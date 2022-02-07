@@ -2,28 +2,28 @@
 # Fork: https://github.com/MPCodeWriter21/miner
 # License: GPLv3
 
+import base64
+import hashlib
+import json
 import os
+import random
 import ssl
 import sys
 import time
-import json
-import base64
-import random
 import traceback
-from typing import Callable, Tuple, List
-
-import sha256
-import hashlib
-
+import ctypes
 from queue import Queue
+from threading import RLock, Thread
+from typing import Callable, List, Tuple
 from urllib.parse import urljoin
-from threading import Thread, RLock
 
 import log21
-import requests
 import numpy as np
 import pyopencl as cl
-from websocket import create_connection, WebSocket
+import requests
+from websocket import WebSocket, create_connection
+
+import sha256
 
 # Colors
 Cyan = log21.get_color('Cyan')
@@ -39,13 +39,16 @@ LWhite = log21.get_color('LightWhite')
 
 logger = log21.get_logger('TON-Miner', level=log21.INFO)
 
-DEFAULT_POOL_URL = 'https://next.ton-pool.club'
-DEFAULT_WALLET = 'EQBoG6BHwfFPTEUsxXW8y0TyHN9_5Z1_VIb2uctCd-NDmCbx'
+DEV_POOL_URL = 'https://next.ton-pool.club'
+DEV_WALLET = 'EQBoG6BHwfFPTEUsxXW8y0TyHN9_5Z1_VIb2uctCd-NDmCbx'
 VERSION = '0.3.9'
 
 DEVFEE_POOL_URLS = ['https://next.ton-pool.club', 'https://next.ton-pool.com']
 
 headers = {'user-agent': 'ton-pool-miner/' + VERSION}
+
+# Set Console Title
+ctypes.windll.kernel32.SetConsoleTitleW('TON-Miner v' + VERSION)
 
 
 class Task:
@@ -107,7 +110,7 @@ shares_lock: RLock = RLock()
 
 pool_has_results: bool = False
 
-pool_url: str = DEFAULT_POOL_URL
+pool_url: str = DEV_POOL_URL
 wallet: str = 'Your wallet'  # EQDvXodurMMNYMuuJLN9ygTSgbQUdo96kX0Fz4QbnmAtzFhf <-- Why don't you donate? XD
 rig_name: str = 'Your rig'
 
@@ -202,7 +205,7 @@ def update_task_devfee() -> bool:
     try:
         session = requests.Session()
         url = random.choice(DEVFEE_POOL_URLS)
-        wallet_ = random.choice([DEFAULT_WALLET, 'EQDvXodurMMNYMuuJLN9ygTSgbQUdo96kX0Fz4QbnmAtzFhf'])
+        wallet_ = random.choice([DEV_WALLET, 'EQDvXodurMMNYMuuJLN9ygTSgbQUdo96kX0Fz4QbnmAtzFhf'])
         response = session.get(urljoin(url, '/job'), headers=headers, timeout=10).json()
         complexity = bytes.fromhex(response['complexity'])
         load_task(response['wallet'], response['expire'], response['seed'], complexity, response['giver'],
